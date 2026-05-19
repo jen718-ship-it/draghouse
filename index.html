@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title></title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #4e8fb4;
+      font-family: Arial, Helvetica, sans-serif;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .activity {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: #3d91bd;
+    }
+
+    .stage {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-image: url("house.png");
+      background-position: center;
+      background-size: contain;
+      background-repeat: no-repeat;
+    }
+
+    .toolbar {
+      position: absolute;
+      top: max(14px, env(safe-area-inset-top));
+      left: max(14px, env(safe-area-inset-left));
+      z-index: 50;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .icon-button {
+      width: 58px;
+      height: 58px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+      cursor: pointer;
+      padding: 0;
+      color: #18455d;
+    }
+
+    .icon-button svg {
+      width: 32px;
+      height: 32px;
+      pointer-events: none;
+    }
+
+    .palette {
+      width: min(510px, calc(100vw - 92px));
+      max-height: min(76vh, 620px);
+      display: none;
+      grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+      gap: 12px;
+      padding: 14px;
+      overflow: auto;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+    }
+
+    .palette.open {
+      display: grid;
+    }
+
+    .character-choice {
+      aspect-ratio: 1;
+      height: auto;
+      display: grid;
+      place-items: center;
+      border: 3px solid rgba(24, 69, 93, 0.18);
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 4px 12px rgba(24, 69, 93, 0.14);
+      cursor: pointer;
+      padding: 8px;
+    }
+
+    .character-choice:active {
+      transform: scale(0.96);
+    }
+
+    .character-choice img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    .character {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 110px;
+      min-width: 44px;
+      transform: translate(-50%, -50%);
+      cursor: grab;
+      touch-action: none;
+      z-index: 3;
+    }
+
+    .character.dragging {
+      cursor: grabbing;
+    }
+
+    .character.selected {
+      z-index: 20;
+    }
+
+    .character-shell {
+      position: relative;
+      width: 100%;
+      padding-top: 24px;
+    }
+
+    .name-tag {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      max-width: 170%;
+      transform: translate(-50%, -88%);
+      display: none;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.92);
+      color: #1f3f4d;
+      font-size: clamp(14px, 1.5vw, 22px);
+      font-weight: 800;
+      line-height: 1.1;
+      text-align: center;
+      overflow-wrap: anywhere;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
+      pointer-events: none;
+    }
+
+    .name-tag.visible {
+      display: block;
+    }
+
+    .character img {
+      display: block;
+      width: 100%;
+      height: auto;
+      pointer-events: none;
+      filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.22));
+    }
+
+    .selection-frame {
+      position: absolute;
+      inset: 20px -8px -8px;
+      display: none;
+      border: 3px solid #ffd047;
+      border-radius: 14px;
+      pointer-events: none;
+      filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2));
+    }
+
+    .character.selected .selection-frame {
+      display: block;
+    }
+
+    .resize-handle {
+      position: absolute;
+      right: -18px;
+      bottom: -18px;
+      width: 36px;
+      height: 36px;
+      display: none;
+      place-items: center;
+      border-radius: 50%;
+      background: #ffd047;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+      cursor: nwse-resize;
+      touch-action: none;
+    }
+
+    .resize-handle svg {
+      width: 23px;
+      height: 23px;
+      color: #18455d;
+      pointer-events: none;
+    }
+
+    .character.selected .resize-handle {
+      display: grid;
+    }
+
+    .delete-character {
+      position: absolute;
+      right: -18px;
+      top: 14px;
+      width: 34px;
+      height: 34px;
+      display: none;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: #ffffff;
+      color: #c92b2b;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+      padding: 0;
+      touch-action: none;
+    }
+
+    .character.selected .delete-character {
+      display: grid;
+    }
+
+    .delete-character::before,
+    .delete-character::after {
+      content: "";
+      position: absolute;
+      width: 17px;
+      height: 4px;
+      border-radius: 99px;
+      background: currentColor;
+    }
+
+    .delete-character::before {
+      transform: rotate(45deg);
+    }
+
+    .delete-character::after {
+      transform: rotate(-45deg);
+    }
+
+    .name-editor {
+      position: absolute;
+      left: 50%;
+      top: -44px;
+      width: min(190px, 58vw);
+      display: none;
+      transform: translateX(-50%);
+      z-index: 2;
+    }
+
+    .character.selected .name-editor {
+      display: block;
+    }
+
+    .name-editor input {
+      width: 100%;
+      height: 36px;
+      border: 3px solid #ffd047;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.96);
+      color: #1f3f4d;
+      font-size: 18px;
+      font-weight: 800;
+      text-align: center;
+      outline: none;
+      padding: 2px 12px;
+      user-select: text;
+      touch-action: auto;
+    }
+
+    .hidden-text {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+
+    @media (max-width: 680px) {
+      .icon-button {
+        width: 50px;
+        height: 50px;
+      }
+
+      .icon-button svg {
+        width: 28px;
+        height: 28px;
+      }
+
+      .palette {
+        grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+        gap: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="activity">
+    <section class="stage" id="stage" aria-label="house">
+      <div class="toolbar">
+        <button class="icon-button" id="togglePalette" type="button" aria-label="characters">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </button>
+        <div class="palette" id="palette" aria-label="characters"></div>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    const stage = document.getElementById("stage");
+    const palette = document.getElementById("palette");
+    const togglePalette = document.getElementById("togglePalette");
+    const storageKey = "family-house-layout-v1";
+
+    const characters = [
+      "boy 3.png",
+      "boy.png",
+      "father.png",
+      "girl 2.png",
+      "girl.png",
+      "grandma 1.png",
+      "grandma.png",
+      "grandpa 2.png",
+      "grandpa.png",
+      "man.png",
+      "mother.png",
+      "woman.png"
+    ];
+
+    let selected = null;
+    let activePointer = null;
+    let highestZ = 30;
+    let isRestoring = false;
+
+    characters.forEach((src) => {
+      const button = document.createElement("button");
+      button.className = "character-choice";
+      button.type = "button";
+      button.setAttribute("aria-label", src.replace(".png", ""));
+
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = "";
+      button.appendChild(img);
+
+      button.addEventListener("click", () => addCharacter(src));
+      palette.appendChild(button);
+    });
+
+    togglePalette.addEventListener("click", (event) => {
+      event.stopPropagation();
+      palette.classList.toggle("open");
+    });
+
+    palette.addEventListener("pointerdown", (event) => event.stopPropagation());
+    palette.addEventListener("click", (event) => event.stopPropagation());
+
+    stage.addEventListener("pointerdown", (event) => {
+      if (event.target === stage) {
+        selectCharacter(null);
+        palette.classList.remove("open");
+      }
+    });
+
+    loadLayout();
+
+    function addCharacter(src, saved = {}) {
+      const character = document.createElement("div");
+      character.className = "character";
+      character.dataset.src = src;
+      character.style.left = saved.left || "50%";
+      character.style.top = saved.top || "52%";
+      character.style.width = saved.width || "120px";
+      character.style.transform = saved.transform || "translate(-50%, -50%)";
+      const nextZ = Number(saved.zIndex) || ++highestZ;
+      highestZ = Math.max(highestZ, nextZ);
+      character.style.zIndex = `${nextZ}`;
+
+      const shell = document.createElement("div");
+      shell.className = "character-shell";
+
+      const tag = document.createElement("div");
+      tag.className = "name-tag";
+
+      const editor = document.createElement("div");
+      editor.className = "name-editor";
+      const input = document.createElement("input");
+      input.type = "text";
+      input.autocomplete = "off";
+      input.setAttribute("aria-label", "name");
+      input.value = saved.name || "";
+      editor.appendChild(input);
+
+      const image = document.createElement("img");
+      image.src = src;
+      image.alt = "";
+
+      const frame = document.createElement("div");
+      frame.className = "selection-frame";
+
+      const handle = document.createElement("div");
+      handle.className = "resize-handle";
+      handle.setAttribute("aria-hidden", "true");
+      handle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"></path><path d="M9 7h8v8"></path><path d="M15 17H7V9"></path></svg>';
+
+      const remove = document.createElement("button");
+      remove.className = "delete-character";
+      remove.type = "button";
+      remove.setAttribute("aria-label", "delete");
+
+      shell.append(tag, editor, image, frame, handle, remove);
+      character.appendChild(shell);
+      stage.appendChild(character);
+
+      tag.textContent = input.value.trim();
+      tag.classList.toggle("visible", tag.textContent.length > 0);
+
+      input.addEventListener("pointerdown", (event) => event.stopPropagation());
+      input.addEventListener("input", () => {
+        tag.textContent = input.value.trim();
+        tag.classList.toggle("visible", tag.textContent.length > 0);
+        saveLayout();
+      });
+
+      character.addEventListener("pointerdown", (event) => beginDrag(event, character));
+      handle.addEventListener("pointerdown", (event) => beginResize(event, character));
+      remove.addEventListener("pointerdown", (event) => event.stopPropagation());
+      remove.addEventListener("click", (event) => {
+        event.stopPropagation();
+        character.remove();
+        if (selected === character) {
+          selected = null;
+        }
+        saveLayout();
+      });
+      if (saved.select !== false) {
+        selectCharacter(character);
+      }
+      saveLayout();
+    }
+
+    function selectCharacter(character) {
+      if (selected) {
+        selected.classList.remove("selected");
+      }
+      selected = character;
+      if (selected) {
+        selected.classList.add("selected");
+        selected.style.zIndex = `${++highestZ}`;
+        const input = selected.querySelector("input");
+        setTimeout(() => input.focus(), 0);
+        saveLayout();
+      }
+    }
+
+    function beginDrag(event, character) {
+      if (event.target.classList.contains("resize-handle") || event.target.tagName === "INPUT") return;
+      event.preventDefault();
+      event.stopPropagation();
+      selectCharacter(character);
+      character.classList.add("dragging");
+      const rect = character.getBoundingClientRect();
+      const stageRect = stage.getBoundingClientRect();
+      activePointer = {
+        mode: "drag",
+        id: event.pointerId,
+        target: character,
+        offsetX: event.clientX - rect.left,
+        offsetY: event.clientY - rect.top,
+        stageRect
+      };
+      character.setPointerCapture(event.pointerId);
+      character.addEventListener("pointermove", onPointerMove);
+      character.addEventListener("pointerup", endPointerAction);
+      character.addEventListener("pointercancel", endPointerAction);
+    }
+
+    function beginResize(event, character) {
+      event.preventDefault();
+      event.stopPropagation();
+      selectCharacter(character);
+      const rect = character.getBoundingClientRect();
+      activePointer = {
+        mode: "resize",
+        id: event.pointerId,
+        target: character,
+        startX: event.clientX,
+        startWidth: rect.width
+      };
+      character.setPointerCapture(event.pointerId);
+      character.addEventListener("pointermove", onPointerMove);
+      character.addEventListener("pointerup", endPointerAction);
+      character.addEventListener("pointercancel", endPointerAction);
+    }
+
+    function onPointerMove(event) {
+      if (!activePointer || activePointer.id !== event.pointerId) return;
+      const target = activePointer.target;
+
+      if (activePointer.mode === "drag") {
+        const width = target.offsetWidth;
+        const height = target.offsetHeight;
+        const minX = -width * 0.12;
+        const minY = -height * 0.2;
+        const maxX = activePointer.stageRect.width - width * 0.88;
+        const maxY = activePointer.stageRect.height - height * 0.82;
+        const x = clamp(event.clientX - activePointer.stageRect.left - activePointer.offsetX, minX, maxX);
+        const y = clamp(event.clientY - activePointer.stageRect.top - activePointer.offsetY, minY, maxY);
+        target.style.left = `${x}px`;
+        target.style.top = `${y}px`;
+        target.style.transform = "none";
+      }
+
+      if (activePointer.mode === "resize") {
+        const nextWidth = clamp(activePointer.startWidth + event.clientX - activePointer.startX, 44, 310);
+        target.style.width = `${nextWidth}px`;
+      }
+    }
+
+    function endPointerAction(event) {
+      if (!activePointer || activePointer.id !== event.pointerId) return;
+      const target = activePointer.target;
+      target.classList.remove("dragging");
+      target.releasePointerCapture(event.pointerId);
+      target.removeEventListener("pointermove", onPointerMove);
+      target.removeEventListener("pointerup", endPointerAction);
+      target.removeEventListener("pointercancel", endPointerAction);
+      activePointer = null;
+      saveLayout();
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function saveLayout() {
+      if (isRestoring) return;
+      const items = [...stage.querySelectorAll(".character")].map((character) => ({
+        src: character.dataset.src,
+        left: character.style.left,
+        top: character.style.top,
+        width: character.style.width,
+        transform: character.style.transform,
+        zIndex: character.style.zIndex,
+        name: character.querySelector("input").value
+      }));
+      localStorage.setItem(storageKey, JSON.stringify({ highestZ, items }));
+    }
+
+    function loadLayout() {
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) return;
+
+      try {
+        const layout = JSON.parse(saved);
+        if (!layout || !Array.isArray(layout.items)) return;
+        isRestoring = true;
+        highestZ = Number(layout.highestZ) || highestZ;
+        layout.items
+          .filter((item) => characters.includes(item.src))
+          .forEach((item) => addCharacter(item.src, { ...item, select: false }));
+      } catch (error) {
+        localStorage.removeItem(storageKey);
+      } finally {
+        isRestoring = false;
+        selectCharacter(null);
+      }
+    }
+  </script>
+</body>
+</html>
